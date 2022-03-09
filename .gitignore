@@ -3,8 +3,8 @@
 *.elf
 *.gp4
 *.pkg
-*.prx
 *.sfo
+*.sprx
 
 Created by https://www.toptal.com/developers/gitignore/api/c++
 # Edit at https://www.toptal.com/developers/gitignore?templates=c++
