@@ -3,6 +3,7 @@
 *.elf
 *.gp4
 *.pkg
+*.prx
 *.sfo
 *.sprx
 
