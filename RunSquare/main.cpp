@@ -25,46 +25,6 @@ uint32_t frameCounter    = 0;
 // Debug trackers
 uint32_t initialAvailableDirectMemory;
 
-void SetCheckerboard(SDL_Surface* surface, int squareSize, Color colorA, Color colorB)
-{
-    Color curColor;
-
-    int useForeground = 1;
-    uint32_t* pixels = (uint32_t*)surface->pixels;
-
-    for (int row = 0; row < surface->h; row += squareSize)
-    {
-        for (int col = 0; col < surface->w; col += squareSize)
-        {
-            if (useForeground)
-            {
-                curColor = colorB;
-                useForeground = 0;
-            }
-            else
-            {
-                curColor = colorA;
-                useForeground = 1;
-            }
-
-            for (int y = 0; y < squareSize; y++)
-            {
-                for (int x = 0; x < squareSize; x++)
-                {
-                    uint32_t pixel = ((row + y) * surface->w) + col + x;
-                    pixels[pixel] = 0x80000000 + (curColor.r << 16) + (curColor.g << 8) + curColor.b;
-                }
-            }
-        }
-
-        // Swap colors each row
-        if (useForeground)
-            useForeground = 0;
-        else
-            useForeground = 1;
-    }
-}
-
 int main(int argc, char* args[])
 {
     int rc;

@@ -9,12 +9,14 @@
 
 #include "Game.h"
 
+const float JOYSTICK_THRESHOLD = 20000.0;
+
 // Font faces
 FT_Face fontDebug;
 FT_Face fontScore;
 
 // Color info
-Color bgColor = { 0x10, 0x10, 0x10 };
+Color bgColor = { 0x00, 0x7D, 0xAF };
 Color fgColor = { 255, 255, 255 };
 
 // Controller / input
@@ -75,7 +77,7 @@ void handleControllerButtonPress(SDL_Renderer* renderer, SDL_Event* ev)
             // Create the projectile and add it to the list
             Projectile* projectile = new Projectile(renderer);
 
-            projectile->SetTrajectory(player->GetTrajectory());
+            // projectile->SetTrajectory(player->GetTrajectory());
             projectile->SetLocation(playerX, playerY);
             projectiles.push_back(projectile);
         }
@@ -84,7 +86,7 @@ void handleControllerButtonPress(SDL_Renderer* renderer, SDL_Event* ev)
     // Restart game
     case PAD_BUTTON_OPTIONS:
         {
-            if (gameOver)
+            if (gameOver || !gameOver)
             {
                 // Reset stats 
                 currentScore = 0;
@@ -104,6 +106,8 @@ void handleControllerButtonPress(SDL_Renderer* renderer, SDL_Event* ev)
 
                 projectiles.clear();
 
+                player = new Player(renderer);
+                
                 // Switch the game back on
                 gameOver = false;
             }
@@ -115,28 +119,21 @@ void handleControllerButtonPress(SDL_Renderer* renderer, SDL_Event* ev)
 void handleControllerAxisChange(SDL_Event* ev)
 {
     double rotationAngle = 0;
+    int moveX = 0;
+    int moveY = 0;
     float rotateX = 0;
     float rotateY = 0;
 
-    // Left stick = rotate
     if (ev->jaxis.axis == 0)
     {
-        rotateX = (float)ev->jaxis.value / 32767.0f;
-        rotateX *= -1;
+        rotateX = (float)ev->jaxis.value;
     }
 
     if (ev->jaxis.axis == 1)
     {
-        rotateY = (float)ev->jaxis.value / 32767.0f;
+        rotateY = (float)ev->jaxis.value;
     }
 
-    applyCircularDeadZone(&rotateX, &rotateY, rotateX, rotateY, 0.25f, 1.00f);
-
-    // If both X and Y are 0, do not update
-    if (rotateX == 0.0f && rotateY == 0.0f)
-        return;
-
-    // Default back on the last values if no update received for either axis
     if (rotateX == 0.0f)
         rotateX = lastLeftStickX;
     else
@@ -147,15 +144,21 @@ void handleControllerAxisChange(SDL_Event* ev)
     else
         lastLeftStickY = rotateY;
 
-    // Calculate the angle to rotate in degrees (cw)
-    rotationAngle = atan2(rotateX, rotateY) * (180.0f / M_PI);
+    if (rotateX > JOYSTICK_THRESHOLD)
+        moveX = 1;
+    else if (rotateX < -JOYSTICK_THRESHOLD)
+        moveX = -1;
+    else
+        moveX = 0;
 
-    // We have to convert the rotation to cw from ccw if it's negative, because we cannot rotate ccw in SDL
-    if (rotationAngle < 0)
-        rotationAngle = 360 + rotationAngle; // rotationAngle is negative
+    if (rotateY > JOYSTICK_THRESHOLD)
+        moveY = 1;
+    else if (rotateY < -JOYSTICK_THRESHOLD)
+        moveY = -1;
+    else
+        moveY = 0;
 
-    // Commit the ship rotation for rendering
-    player->SetTrajectory((int)rotationAngle);
+    player->SetMovement(moveX, moveY);
 }
 
 void spawnEnemy(SDL_Renderer* renderer)
@@ -228,8 +231,6 @@ void checkCollisionUpdates()
         if (it->CheckHitTarget())
         {
             // Game over, no need to further process collisions
-            gameOver = true;
-            return;
         }
     }
 
@@ -377,6 +378,7 @@ void update(SDL_Renderer *renderer, int deltaFrameTicks, int totalFrameCount, in
     // Run game event updates
     if (!gameOver)
     {
+        player->Update(renderer, deltaFrameTicks, totalFrameCount);
         // Run enemy updates
         for (auto enemy : enemies)
             enemy->Update(renderer, deltaFrameTicks, totalFrameCount);
@@ -405,7 +407,7 @@ void initGame(SDL_Renderer* renderer)
     player = new Player(renderer);
 
     // Get the player location as coordinates and set the trackers
-    auto playerLocation = player->GetShipLocation();
+    auto playerLocation = player->GetPosition();
     playerX = std::get<0>(playerLocation);
     playerY = std::get<1>(playerLocation);
 }

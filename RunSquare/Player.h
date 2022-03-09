@@ -8,19 +8,16 @@ class Player
 {
 private:
     SDL_Texture* texture;
-    SDL_Rect dest;
-
-    int orientation;
-
+    SDL_Rect position;
+    SDL_Rect movementVector;
+    float speed;
 public:
     Player(SDL_Renderer *renderer);
     ~Player();
 
     void Render(SDL_Renderer* renderer);
-    // No update handler
+    void Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount);
 
-    void SetTrajectory(int degrees);
-
-    std::tuple<int, int> GetShipLocation();
-    int GetTrajectory();
+    std::tuple<int, int> GetPosition();
+    void SetMovement(int x, int y);
 };

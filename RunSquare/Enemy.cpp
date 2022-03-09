@@ -57,7 +57,7 @@ void Enemy::Render(SDL_Renderer* renderer)
     if (this->texture != nullptr)
     {
         SDL_QueryTexture(this->texture, NULL, NULL, &this->currentDest.w, &this->currentDest.h);
-        SDL_RenderCopyEx(renderer, this->texture, NULL, &this->currentDest, this->enemyOrientation, NULL, SDL_FLIP_NONE);
+        SDL_RenderCopy(renderer, this->texture, NULL, &this->currentDest);
     }
 }
 

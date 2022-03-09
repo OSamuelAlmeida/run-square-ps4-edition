@@ -1,20 +1,24 @@
 #include "Player.h"
 
+const float INITIAL_PLAYER_SPEED = 0.20f;
+
 Player::Player(SDL_Renderer *renderer)
 {
-    // Load the ship texture
-    SDL_Surface* shipSurface = IMG_Load("/app0/assets/images/player.tga");
-    this->texture = SDL_CreateTextureFromSurface(renderer, shipSurface);
+    SDL_Surface* playerSurface = IMG_Load("/app0/assets/images/player.tga");
+    this->texture = SDL_CreateTextureFromSurface(renderer, playerSurface);
 
-    // Center the ship
-    this->dest.x = (1920 / 2) - (shipSurface->w / 2);
-    this->dest.y = (1080 / 2) - (shipSurface->h / 2);
+    this->position.x = rand() % (1920 - playerSurface->w / 2);
+    this->position.y = rand() % (1280 - playerSurface->h / 2);
+    
+    this->movementVector.x = 0;
+    this->movementVector.y = 0;
+
+    this->speed = INITIAL_PLAYER_SPEED;
 }
 
 Player::~Player()
 {
-    // Destroy all textures
-    if (this->texture != nullptr)
+     if (this->texture != nullptr)
     {
         SDL_DestroyTexture(this->texture);
         this->texture = nullptr;
@@ -25,22 +29,35 @@ void Player::Render(SDL_Renderer* renderer)
 {
     if (this->texture != nullptr)
     {
-        SDL_QueryTexture(this->texture, NULL, NULL, &this->dest.w, &this->dest.h);
-        SDL_RenderCopyEx(renderer, this->texture, NULL, &this->dest, this->orientation, NULL, SDL_FLIP_NONE);
+        SDL_QueryTexture(this->texture, NULL, NULL, &this->position.w, &this->position.h);
+        SDL_RenderCopy(renderer, this->texture, NULL, &this->position);
     }
 }
 
-void Player::SetTrajectory(int degrees)
+void Player::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount) {
+    int movementX = 0;
+    int movementY = 0;
+    
+    if (this->movementVector.x != 0) {
+        movementX = this->speed * this->movementVector.x * deltaFrameTicks;
+    }
+
+    if (this->movementVector.y != 0) {
+        movementY = this->speed * this->movementVector.y * deltaFrameTicks;
+    }
+
+    this->position.x += movementX;
+    this->position.y += movementY;
+}
+                    
+
+std::tuple<int, int> Player::GetPosition()
 {
-    this->orientation = degrees;
+    return std::make_tuple(this->position.x, this->position.y);
 }
 
-std::tuple<int, int> Player::GetShipLocation()
+void Player::SetMovement(int x, int y)
 {
-    return std::make_tuple(this->dest.x, this->dest.y);
-}
-
-int Player::GetTrajectory()
-{
-    return this->orientation;
+    this->movementVector.x = x;
+    this->movementVector.y = y;
 }
