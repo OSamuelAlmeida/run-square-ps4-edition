@@ -1,5 +1,6 @@
 # PS4 and OpenOrbis binaries
 *.bin
+*.gp4
+*.pkg
 *.prx
 *.sfo
-*.pkg
