@@ -56,10 +56,10 @@ void Player::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameC
     int newPositionX = this->position.x + deltaX;
     int newPositionY = this->position.y + deltaY;
 
-    if (newPositionX > 0 && newPositionX < 1920 - (this->position.w))
+    if (newPositionX > 0 && newPositionX < Constants::FRAME_WIDTH - (this->position.w))
         this->position.x = newPositionX;
 
-    if (newPositionY > 0 && newPositionY < 1080 - (this->position.h))
+    if (newPositionY > 0 && newPositionY < Constants::FRAME_HEIGHT - (this->position.h))
         this->position.y = newPositionY;
 }
 
