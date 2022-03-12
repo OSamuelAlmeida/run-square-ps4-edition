@@ -24,6 +24,10 @@ enum ControllerButton {
 	PAD_BUTTON_OPTIONS = 9
 };
 
-void initGame(SDL_Renderer* renderer);
-void render(SDL_Renderer* renderer);
-void update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount, int totalTickCount);
+class Game {
+public:
+    Game(SDL_Renderer* renderer);
+    
+    void Render(SDL_Renderer* renderer);
+    void Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount, int totalTickCount);
+};

@@ -37,8 +37,7 @@ std::vector<Coin*> coins;
 
 void spawnEnemy(SDL_Renderer* renderer)
 {
-    Enemy* enemy = new Enemy(renderer);
-    enemy->SetTargetPositionPointer(player->GetPositionPointer());
+    Enemy* enemy = new Enemy(renderer, player->GetPositionPointer());
     enemies.push_back(enemy);
 }
 
@@ -55,29 +54,26 @@ void handleControllerButtonPress(SDL_Renderer* renderer, SDL_Event* ev)
     {
     case PAD_BUTTON_OPTIONS:
         {
-            if (gameOver || !gameOver)
-            {
-                currentScore = 0;
-                gameStage = 1;
-                handledNextDifficulty = true;
+            currentScore = 0;
+            gameStage = 1;
+            handledNextDifficulty = true;
 
-                hud->SetScore(currentScore);
+            hud->SetScore(currentScore);
 
-                for (auto enemy : enemies)               
-                    delete enemy;
+            for (auto enemy : enemies)               
+                delete enemy;
 
-                for (auto coin : coins)
-                    delete coin;
+            for (auto coin : coins)
+                delete coin;
                 
-                enemies.clear();
-                coins.clear();
+            enemies.clear();
+            coins.clear();
 
-                player = new Player(renderer);
-                spawnEnemy(renderer);
-                spawnCoin(renderer);
+            player = new Player(renderer);
+            spawnEnemy(renderer);
+            spawnCoin(renderer);
                 
-                gameOver = false;
-            }
+            gameOver = false;
         }
         break;
     }
@@ -155,7 +151,7 @@ void checkCollisionUpdates()
     }
 }
 
-void render(SDL_Renderer* renderer)
+void Game::Render(SDL_Renderer* renderer)
 {
     if (!gameOver)
     {
@@ -171,7 +167,7 @@ void render(SDL_Renderer* renderer)
     hud->Render(renderer);
 }
 
-void update(SDL_Renderer *renderer, int deltaFrameTicks, int totalFrameCount, int totalTickCount)
+void Game::Update(SDL_Renderer *renderer, int deltaFrameTicks, int totalFrameCount, int totalTickCount)
 {
     SDL_Event ev;
 
@@ -213,7 +209,7 @@ void update(SDL_Renderer *renderer, int deltaFrameTicks, int totalFrameCount, in
     }
 }
 
-void initGame(SDL_Renderer* renderer)
+Game::Game(SDL_Renderer* renderer)
 {
     srand(time(0));
 

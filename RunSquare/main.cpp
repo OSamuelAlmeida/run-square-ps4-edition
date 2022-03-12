@@ -2,27 +2,25 @@
 #include <orbis/libkernel.h>
 #include <orbis/Sysmodule.h>
 
+#include "Constants.h"
 #include "Game.h"
 
 #include "../../_common/log.h"
 
-#define FRAME_WIDTH     1920
-#define FRAME_HEIGHT    1080
-
-// Logging
 std::stringstream debugLogStream;
 
-// SDL window and software renderer
-SDL_Window* window;
-SDL_Renderer* renderer;
+struct {
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+} graphics;
 
-// Frame tracking info for debugging
-uint32_t lastFrameTicks  = 0;
-uint32_t startFrameTicks = 0;
-uint32_t deltaFrameTicks = 0;
-uint32_t frameCounter    = 0;
+struct {
+    uint32_t lastFrameTicks  = 0;
+    uint32_t startFrameTicks = 0;
+    uint32_t deltaFrameTicks = 0;
+    uint32_t frameCounter    = 0;
+} frameInfo;
 
-// Debug trackers
 uint32_t initialAvailableDirectMemory;
 
 int main(int argc, char* args[])
@@ -30,10 +28,8 @@ int main(int argc, char* args[])
     int rc;
     SDL_Surface* windowSurface;
 
-    // No buffering
     setvbuf(stdout, NULL, _IONBF, 0);
 
-    // Initialize SDL functions
     DEBUGLOG << "Initializing SDL";
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) != 0)
@@ -53,7 +49,6 @@ int main(int argc, char* args[])
         for (;;);
     }
 
-    // Finally initialize freetype
     rc = FT_Init_FreeType(&ftLib);
 
     if (rc < 0)
@@ -61,7 +56,6 @@ int main(int argc, char* args[])
         for (;;);
     }
 
-    // Create a font face for debug and score text
     const char* debugFontPath = "/app0/assets/fonts/VeraMono.ttf";
 
     DEBUGLOG << "Initializing debug font (" << debugFontPath << ")";
@@ -82,28 +76,30 @@ int main(int argc, char* args[])
         for (;;);
     }
 
-    // Create a window context
     DEBUGLOG << "Creating a window";
 
-    window = SDL_CreateWindow("main", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, FRAME_WIDTH, FRAME_HEIGHT, 0);
+    graphics.window = SDL_CreateWindow("main",
+                              SDL_WINDOWPOS_UNDEFINED,
+                              SDL_WINDOWPOS_UNDEFINED,
+                              Constants::FRAME_WIDTH,
+                              Constants::FRAME_HEIGHT,
+                              0);
 
-    if (!window)
+    if (!graphics.window)
     {
         DEBUGLOG << "Failed to create window: " << SDL_GetError();
         for (;;);
     }
 
-    // Create a software rendering instance for the window
-    windowSurface = SDL_GetWindowSurface(window);
-    renderer = SDL_CreateSoftwareRenderer(windowSurface);
+    windowSurface = SDL_GetWindowSurface(graphics.window);
+    graphics.renderer = SDL_CreateSoftwareRenderer(windowSurface);
 
-    if (!renderer)
+    if (!graphics.renderer)
     {
         DEBUGLOG << "Failed to create software renderer: " << SDL_GetError();
         for (;;);
     }
 
-    // Initialize input / joystick
     if (SDL_NumJoysticks() < 1)
     {
         DEBUGLOG << "No controllers available!";
@@ -118,29 +114,27 @@ int main(int argc, char* args[])
         for (;;);
     }
 
-    initGame(renderer);
-
-    // Enter the render loop
+    Game game(graphics.renderer);
+    
     DEBUGLOG << "Entering draw loop...";
 
     for (int frame = 0;; frame++)
     {
-        startFrameTicks = SDL_GetTicks();
-        deltaFrameTicks = startFrameTicks - lastFrameTicks;
-        lastFrameTicks  = startFrameTicks;
+        frameInfo.startFrameTicks = SDL_GetTicks();
+        frameInfo.deltaFrameTicks = frameInfo.startFrameTicks - frameInfo.lastFrameTicks;
+        frameInfo.lastFrameTicks  = frameInfo.startFrameTicks;
 
-        // Clear the canvas
-        SDL_SetRenderDrawColor(renderer, bgColor.r, bgColor.g, bgColor.b, 0xFF);
-        SDL_RenderClear(renderer);
+        SDL_SetRenderDrawColor(graphics.renderer, bgColor.r, bgColor.g, bgColor.b, 0xFF);
+        SDL_RenderClear(graphics.renderer);
 
-        // Run all rendering routines
-        render(renderer);
+        game.Render(graphics.renderer);
 
-        // Propagate the updated window to the screen
-        SDL_UpdateWindowSurface(window);
+        SDL_UpdateWindowSurface(graphics.window);
 
-        // Run all update routines
-        update(renderer, deltaFrameTicks, frameCounter++, startFrameTicks);
+        game.Update(graphics.renderer,
+               frameInfo.deltaFrameTicks,
+               frameInfo.frameCounter++,
+               frameInfo.startFrameTicks);
     }
 
     SDL_Quit();
