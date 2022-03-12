@@ -1,8 +1,11 @@
 #pragma once
 
 #include <tuple>
+#include <cstdlib>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+
+#include "Constants.h"
 
 class Player
 {

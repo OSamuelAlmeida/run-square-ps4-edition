@@ -8,8 +8,8 @@ Player::Player(SDL_Renderer *renderer)
     SDL_Surface* playerSurface = IMG_Load("/app0/assets/images/player.tga");
     this->texture = SDL_CreateTextureFromSurface(renderer, playerSurface);
 
-    this->position.x = rand() % (1920 - playerSurface->w);
-    this->position.y = rand() % (1080 - playerSurface->h);
+    this->position.x = std::rand() % (Constants::FRAME_WIDTH - playerSurface->w);
+    this->position.y = std::rand() % (Constants::FRAME_HEIGHT - playerSurface->h);
     
     this->movementVector.x = 0;
     this->movementVector.y = 0;
