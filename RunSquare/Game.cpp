@@ -9,7 +9,7 @@
 
 #include "Game.h"
 
-const static float JOYSTICK_THRESHOLD = 20000.0;
+const static int JOYSTICK_THRESHOLD = 20000;
 
 FT_Face fontDebug;
 FT_Face fontScore;
@@ -19,8 +19,8 @@ Color fgColor = { 255, 255, 255 };
 
 SDL_Joystick* controller;
 
-int lastLeftStickX = 0;
-int lastLeftStickY = 0;
+int lastAxisRotationX = 0;
+int lastAxisRotationY = 0;
 
 int currentScore = 0;
 int gameStage = 1;
@@ -81,55 +81,45 @@ void handleControllerButtonPress(SDL_Renderer* renderer, SDL_Event* ev)
 
 void handleControllerAxisChange(SDL_Event* ev)
 {
-    double rotationAngle = 0;
-    int moveX = 0;
-    int moveY = 0;
-    float rotateX = 0;
-    float rotateY = 0;
+    int axisRotationX = 0;
 
     if (ev->jaxis.axis == 0) {
-        rotateX = (float)ev->jaxis.value;
+        axisRotationX = ev->jaxis.value;
     }
+
+    int axisRotationY = 0;
 
     if (ev->jaxis.axis == 1) {
-        rotateY = (float)ev->jaxis.value;
+        axisRotationY = ev->jaxis.value;
     }
 
-    if (rotateX == 0.0f) {
-        rotateX = lastLeftStickX;
+    if (axisRotationX == 0.0f) {
+        axisRotationX = lastAxisRotationX;
     }
     else {
-        lastLeftStickX = rotateX;
+        lastAxisRotationX  = axisRotationX;
     }
     
-    if (rotateY == 0.0f) {
-        rotateY = lastLeftStickY;
+    if (axisRotationY == 0.0f) {
+        axisRotationY = lastAxisRotationY;
     }
     else {
-        lastLeftStickY = rotateY;
+        lastAxisRotationY = axisRotationY;
     }
 
-    if (rotateX > JOYSTICK_THRESHOLD) {
-        moveX = 1;
-    }
-    else if (rotateX < -JOYSTICK_THRESHOLD) {
-        moveX = -1;
-    }
-    else {
-        moveX = 0;
+    int movementX = 0;
+    
+    if (axisRotationX != 0 && std::abs(axisRotationX) >= JOYSTICK_THRESHOLD) {
+        movementX = axisRotationX / std::abs(axisRotationX);
     }
 
-    if (rotateY > JOYSTICK_THRESHOLD) {
-        moveY = 1;
-    }
-    else if (rotateY < -JOYSTICK_THRESHOLD) {
-        moveY = -1;
-    }
-    else {
-        moveY = 0;
+    int movementY = 0;
+
+    if (axisRotationY != 0 && std::abs(axisRotationY) >= JOYSTICK_THRESHOLD) {
+        movementY = axisRotationY / std::abs(axisRotationY);
     }
 
-    player->SetMovement(moveX, moveY);
+    player->SetMovement(movementX, movementY);
 }
 
 void checkCollisionUpdates()
