@@ -5,7 +5,7 @@
 #include "Constants.h"
 #include "Game.h"
 
-#include "../../_common/log.h"
+#include "_common/log.h"
 
 std::stringstream debugLogStream;
 
@@ -20,8 +20,6 @@ struct {
     uint32_t deltaFrameTicks = 0;
     uint32_t frameCounter    = 0;
 } frameInfo;
-
-uint32_t initialAvailableDirectMemory;
 
 int main(int argc, char* args[])
 {
