@@ -21,7 +21,7 @@ public:
     Coin(SDL_Renderer* renderer);
     ~Coin();
 
-    void ResetCoin();    
+    void Reset();    
     
     void Render(SDL_Renderer* renderer);
     void Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount, int totalTickCount);

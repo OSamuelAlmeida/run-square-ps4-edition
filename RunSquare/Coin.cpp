@@ -5,7 +5,7 @@ Coin::Coin(SDL_Renderer* renderer)
     SDL_Surface* coinSurface = IMG_Load("/app0/assets/images/coin.tga");
     this->texture = SDL_CreateTextureFromSurface(renderer, coinSurface);
 
-    this->ResetCoin();
+    this->Reset();
 }
 
 Coin::~Coin()
@@ -17,9 +17,10 @@ Coin::~Coin()
     }
 }
 
-void Coin::ResetCoin() {
-    this->position.x = std::rand() % (Constants::FRAME_WIDTH - 20);
-    this->position.y = std::rand() % (Constants::FRAME_HEIGHT - 20);
+void Coin::Reset() {
+    SDL_QueryTexture(this->texture, NULL, NULL, &this->position.w, &this->position.h);
+    this->position.x = std::rand() % (Constants::FRAME_WIDTH - this->position.w);
+    this->position.y = std::rand() % (Constants::FRAME_HEIGHT - this->position.h);
     this->targetHit = false;
 }
 

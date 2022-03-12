@@ -134,7 +134,7 @@ void checkCollisionUpdates()
     for (auto it : coins) {
         if (it->HasHitTarget()) {
             currentScore += 1;
-            it->ResetCoin();
+            it->Reset();
 
             hud->SetScore(currentScore);
         }
