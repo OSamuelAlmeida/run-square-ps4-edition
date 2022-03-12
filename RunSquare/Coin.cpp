@@ -18,8 +18,8 @@ Coin::~Coin()
 }
 
 void Coin::ResetCoin() {
-    this->position.x = rand() % (1920 - 20);
-    this->position.y = rand() % (1080 - 20);
+    this->position.x = std::rand() % (Constants::FRAME_WIDTH - 20);
+    this->position.y = std::rand() % (Constants::FRAME_HEIGHT - 20);
     this->targetHit = false;
 }
 
