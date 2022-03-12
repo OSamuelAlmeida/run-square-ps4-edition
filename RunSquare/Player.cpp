@@ -1,19 +1,21 @@
 #include "Player.h"
 
-const float INITIAL_PLAYER_SPEED = 0.20f;
+const static float INITIAL_PLAYER_SPEED = 0.2f;
+const static float INCREMENT_PLAYER_SPEED = 0.05f;
 
 Player::Player(SDL_Renderer *renderer)
 {
     SDL_Surface* playerSurface = IMG_Load("/app0/assets/images/player.tga");
     this->texture = SDL_CreateTextureFromSurface(renderer, playerSurface);
 
-    this->position.x = rand() % (1920 - playerSurface->w / 2);
-    this->position.y = rand() % (1280 - playerSurface->h / 2);
+    this->position.x = rand() % (1920 - playerSurface->w);
+    this->position.y = rand() % (1080 - playerSurface->h);
     
     this->movementVector.x = 0;
     this->movementVector.y = 0;
 
     this->speed = INITIAL_PLAYER_SPEED;
+    this->lastSpeedUpdateTick = 0;
 }
 
 Player::~Player()
@@ -34,26 +36,36 @@ void Player::Render(SDL_Renderer* renderer)
     }
 }
 
-void Player::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount) {
-    int movementX = 0;
-    int movementY = 0;
+void Player::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount, int totalTickCount) {
+    int deltaX = 0;
+    int deltaY = 0;
+
+    if ((totalTickCount - this->lastSpeedUpdateTick) >= 10000) {
+        this->speed += INCREMENT_PLAYER_SPEED;
+        this->lastSpeedUpdateTick = totalTickCount;
+    }
     
     if (this->movementVector.x != 0) {
-        movementX = this->speed * this->movementVector.x * deltaFrameTicks;
+        deltaX = this->speed * this->movementVector.x * deltaFrameTicks;
     }
 
     if (this->movementVector.y != 0) {
-        movementY = this->speed * this->movementVector.y * deltaFrameTicks;
+        deltaY = this->speed * this->movementVector.y * deltaFrameTicks;
     }
 
-    this->position.x += movementX;
-    this->position.y += movementY;
-}
-                    
+    int newPositionX = this->position.x + deltaX;
+    int newPositionY = this->position.y + deltaY;
 
-std::tuple<int, int> Player::GetPosition()
+    if (newPositionX > 0 && newPositionX < 1920 - (this->position.w))
+        this->position.x = newPositionX;
+
+    if (newPositionY > 0 && newPositionY < 1080 - (this->position.h))
+        this->position.y = newPositionY;
+}
+
+const SDL_Rect* Player::GetPositionPointer()
 {
-    return std::make_tuple(this->position.x, this->position.y);
+    return &this->position;
 }
 
 void Player::SetMovement(int x, int y)

@@ -1,50 +1,29 @@
 #include "Enemy.h"
 
-Enemy::Enemy(SDL_Renderer* renderer, DifficultySpeedModifier difficultyLevel)
+const static float INITIAL_ENEMY_SPEED = 0.075f;
+const static float INCREMENT_ENEMY_SPEED = 0.025f;
+
+Enemy::Enemy(SDL_Renderer* renderer)
 {
-    // Load the ship texture
-    SDL_Surface* shipSurface = IMG_Load("/app0/assets/images/enemy.tga");
-    this->texture = SDL_CreateTextureFromSurface(renderer, shipSurface);
+    SDL_Surface* enemySurface = IMG_Load("/app0/assets/images/enemy.tga");
+    this->texture = SDL_CreateTextureFromSurface(renderer, enemySurface);
+    SDL_SetTextureBlendMode(this->texture, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureAlphaMod(this->texture, 128);
 
-    // Default x and y
-    this->currentDest.x = 50;
-    this->currentDest.y = 50;
+    this->position.x = rand() % (1920 - enemySurface->w);
+    this->position.y = rand() % (1080 - enemySurface->h);
 
-    this->trackingSlope  = 0;
-    this->trackingOffset = 0;
+    this->targetHit = false;
 
-    this->hitTarget = false;
+    this->speed = INITIAL_ENEMY_SPEED;
+    this->active = false;
 
-    // Set the movement speed based on current difficulty
-    switch (difficultyLevel)
-    {
-    case LEVEL_ZERO:
-        this->moveSpeed = 0.10;
-        break;
-    case LEVEL_ONE:
-        this->moveSpeed = 0.15;
-        break;
-    case LEVEL_TWO:
-        this->moveSpeed = 0.20;
-        break;
-    case LEVEL_THREE:
-        this->moveSpeed = 0.30;
-        break;
-    case LEVEL_FOUR:
-        this->moveSpeed = 0.45;
-        break;
-    case LEVEL_FIVE:
-        this->moveSpeed = 0.60;
-        break;
-    default:
-        this->moveSpeed = 0.15;
-        break;
-    }
+    this->spawnTick = 0;
+    this->lastSpeedUpdateTick = 0;
 }
 
 Enemy::~Enemy()
 {
-    // Destroy all textures
     if (this->texture != nullptr)
     {
         SDL_DestroyTexture(this->texture);
@@ -56,77 +35,79 @@ void Enemy::Render(SDL_Renderer* renderer)
 {
     if (this->texture != nullptr)
     {
-        SDL_QueryTexture(this->texture, NULL, NULL, &this->currentDest.w, &this->currentDest.h);
-        SDL_RenderCopy(renderer, this->texture, NULL, &this->currentDest);
+        SDL_QueryTexture(this->texture, NULL, NULL, &this->position.w, &this->position.h);
+        SDL_RenderCopy(renderer, this->texture, NULL, &this->position);
     }
 }
 
-void Enemy::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount)
+void Enemy::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount, int totalTickCount)
 {
-    float x;
-    float y;
+    if (this->targetHit) {
+        return;
+    }
+    
+    if (!this->active) {
+        if (this->spawnTick == 0) {
+            this->spawnTick = totalTickCount;
+        }
 
-    // Avoid updating if the enemy reaches the player. We'll check by seeing if the enemy is within 10 pixels.
-    if (abs(this->currentDest.x - this->targetDest.x) < 10 &&
-        abs(this->currentDest.y - this->targetDest.y) < 10)
-    {
-        this->hitTarget = true;
+        if ((totalTickCount - this->spawnTick) >= 2000) {
+            SDL_SetTextureAlphaMod(this->texture, 255);
+            this->active = true;
+        }
+        else {
+            return;
+        }
+    }
+    
+    if (SDL_HasIntersection(&this->position, this->targetPosition)) {
+        this->targetHit = true;
         return;
     }
 
-    // If we're to the left of the player, we need to move in the positive direction
-    // If we're to the right of the player, we need to move in the negative direction
-    int directionalModifier = 1;
+    if ((totalTickCount - this->lastSpeedUpdateTick) >= 10000) {
+        this->speed += INCREMENT_ENEMY_SPEED;
+        this->lastSpeedUpdateTick = totalTickCount;
+    }
 
-    if (this->targetDest.x < this->currentDest.x)
-        directionalModifier = -1;
+    int targetDeltaX = this->targetPosition->x - this->position.x;
+    int targetDeltaY = this->targetPosition->y - this->position.y;
+
+    int movementX = 0;
+    if (targetDeltaX != 0) {
+        movementX = targetDeltaX / abs(targetDeltaX);
+    }
     
-    // x = x + step
-    x = this->currentDest.x + ((this->moveSpeed * deltaFrameTicks) * directionalModifier);
-
-    // y = mx + b
-    y = (this->trackingSlope * x) + this->trackingOffset;
-
-    this->currentDest.x = (int)x;
-    this->currentDest.y = (int)y;
+    int movementY = 0;
+    if (targetDeltaY != 0) {
+        movementY = targetDeltaY / abs(targetDeltaY);
+    }
+    
+    this->position.x += this->speed * movementX * deltaFrameTicks;
+    this->position.y += this->speed * movementY * deltaFrameTicks;
 }
 
-void Enemy::SetLocationAndTarget(int locationX, int locationY, int targetX, int targetY)
+bool Enemy::HasHitTarget()
 {
-    this->currentDest.x = locationX;
-    this->currentDest.y = locationY;
+    return this->targetHit;
 
-    this->targetDest.x = targetX;
-    this->targetDest.y = targetY;
-
-    // Solve for the slope and offset of the line
-    float a = targetY - locationY;
-    float b = locationX - targetX;
-    float c = a * (locationX) + b * (locationY);
-
-    this->trackingSlope  = (a * -1) / b;
-    this->trackingOffset = (c / b);
 }
 
-void Enemy::SetOrientation(int degrees)
+void Enemy::SetTargetPositionPointer(const SDL_Rect* targetPosition)
 {
-    this->enemyOrientation = degrees;
+    this->targetPosition = targetPosition;
 }
 
-bool Enemy::CheckHitTarget()
-{
-    return this->hitTarget;
-}
 
-std::tuple<int, int> Enemy::GetEnemyLocation()
+std::tuple<int, int> Enemy::GetPosition()
 {
     int x = 0;
     int y = 0;
 
     if (this->texture != nullptr)
     {
-        x = this->currentDest.x;
-        y = this->currentDest.y;
+        x = this->position.x;
+        y = this->position.y;
     }
 
     return std::make_tuple(x, y);

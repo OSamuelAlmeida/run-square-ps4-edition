@@ -230,10 +230,10 @@ void HUD::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCoun
     this->frameCounterTexture = CreateText(renderer, (char*)this->frameCounterText.c_str(), fontDebug, this->fgColor, this->bgColor);
 }
 
-void HUD::SetScore(int score, std::string difficulty)
+void HUD::SetScore(int score)
 {
     this->score = score;
-    this->scoreCounterText = "Score: " + std::to_string(score) + " (Difficulty: " + difficulty + ")";
+    this->scoreCounterText = "Score: " + std::to_string(score);
     this->updateScoreText  = true;
 }
 

@@ -5,41 +5,30 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
-enum DifficultySpeedModifier
-{
-    LEVEL_ZERO,  // 0.10
-    LEVEL_ONE,   // 0.15
-    LEVEL_TWO,   // 0.20
-    LEVEL_THREE, // 0.30
-    LEVEL_FOUR,  // 0.45
-    LEVEL_FIVE   // 0.60
-};
-
 class Enemy
 {
 private:
     SDL_Texture* texture;
-    SDL_Rect currentDest;
-    SDL_Rect targetDest;
+    SDL_Rect position;
+    
+    const SDL_Rect* targetPosition;
+    bool targetHit;
 
-    float moveSpeed;
-    float trackingSlope;
-    float trackingOffset;
+    float speed;
+    bool active;
 
-    int enemyOrientation;
-
-    bool hitTarget;
-
+    int spawnTick;
+    int lastSpeedUpdateTick;
 public:
-    Enemy(SDL_Renderer* renderer, DifficultySpeedModifier difficultyLevel);
+    Enemy(SDL_Renderer* renderer);
     ~Enemy();
 
     void Render(SDL_Renderer* renderer);
-    void Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount);
+    void Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount, int totalTickCount);
 
-    void SetLocationAndTarget(int locationX, int locationY, int targetX, int targetY);
-    void SetOrientation(int degrees);
-    bool CheckHitTarget();
+    bool HasHitTarget();
 
-    std::tuple<int, int> GetEnemyLocation();
+    void SetTargetPositionPointer(const SDL_Rect* targetPosition);
+    
+    std::tuple<int, int> GetPosition();
 };

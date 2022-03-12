@@ -9,106 +9,73 @@
 
 #include "Game.h"
 
-const float JOYSTICK_THRESHOLD = 20000.0;
+const static float JOYSTICK_THRESHOLD = 20000.0;
 
-// Font faces
 FT_Face fontDebug;
 FT_Face fontScore;
 
-// Color info
 Color bgColor = { 0x00, 0x7D, 0xAF };
 Color fgColor = { 255, 255, 255 };
 
-// Controller / input
 SDL_Joystick* controller;
 
-// Input trackers
 int lastLeftStickX = 0;
 int lastLeftStickY = 0;
 
-// Location trackers
-int playerX = 0;
-int playerY = 0;
-
-// Tick trackers
-int lastEnemySpawnTick = 0;
-
-// Game meta information
-DifficultySpeedModifier difficultyLevel = LEVEL_ZERO;
-std::string difficultyDisplay = "Easy";
 int currentScore = 0;
+int gameStage = 1;
 bool gameOver = false;
+bool handledNextDifficulty = true;
 
-// Classes
+int lastGameStageChangeTick = 0;
+
 HUD* hud;
 Player* player;
 std::vector<Enemy*> enemies;
-std::vector<Projectile*> projectiles;
+std::vector<Coin*> coins;
 
-// Credit: Ryan Juckett
-void applyCircularDeadZone(float* pOutX, float* pOutY, float x, float y, float low, float high)
+
+void spawnEnemy(SDL_Renderer* renderer)
 {
-    float mag = sqrtf(x * x + y * y);
+    Enemy* enemy = new Enemy(renderer);
+    enemy->SetTargetPositionPointer(player->GetPositionPointer());
+    enemies.push_back(enemy);
+}
 
-    if (mag > low)
-    {
-        float legalRange    = 1.0f - high - low;
-        float normalizedMag = fmin(1.0f, (mag - low) / legalRange);
-        float scale = normalizedMag / mag;
-
-        *pOutX = x * scale;
-        *pOutY = y * scale;
-    }
-    else
-    {
-        // Deadzoned
-        *pOutX = 0.0f;
-        *pOutY = 0.0f;
-    }
+void spawnCoin(SDL_Renderer* renderer)
+{
+    Coin* coin = new Coin(renderer);
+    coin->SetTargetPositionPointer(player->GetPositionPointer());
+    coins.push_back(coin);
 }
 
 void handleControllerButtonPress(SDL_Renderer* renderer, SDL_Event* ev)
 {
     switch (ev->jbutton.button)
     {
-    // Shoot projectile
-    case PAD_BUTTON_CROSS:
-        {
-            // Create the projectile and add it to the list
-            Projectile* projectile = new Projectile(renderer);
-
-            // projectile->SetTrajectory(player->GetTrajectory());
-            projectile->SetLocation(playerX, playerY);
-            projectiles.push_back(projectile);
-        }
-        break;
-
-    // Restart game
     case PAD_BUTTON_OPTIONS:
         {
             if (gameOver || !gameOver)
             {
-                // Reset stats 
                 currentScore = 0;
-                difficultyLevel = LEVEL_ONE;
-                difficultyDisplay = DIFFICULTY_LEVEL_ONE;
+                gameStage = 1;
+                handledNextDifficulty = true;
 
-                hud->SetScore(currentScore, difficultyDisplay);
+                hud->SetScore(currentScore);
 
-                // Destroy all current enemies and projectiles
-                for (auto enemy : enemies)
+                for (auto enemy : enemies)               
                     delete enemy;
 
+                for (auto coin : coins)
+                    delete coin;
+                
                 enemies.clear();
-
-                for (auto projectile : projectiles)
-                    delete projectile;
-
-                projectiles.clear();
+                coins.clear();
 
                 player = new Player(renderer);
+                spawnEnemy(renderer);
+                spawnCoin(renderer);
                 
-                // Switch the game back on
                 gameOver = false;
             }
         }
@@ -124,290 +91,138 @@ void handleControllerAxisChange(SDL_Event* ev)
     float rotateX = 0;
     float rotateY = 0;
 
-    if (ev->jaxis.axis == 0)
-    {
+    if (ev->jaxis.axis == 0) {
         rotateX = (float)ev->jaxis.value;
     }
 
-    if (ev->jaxis.axis == 1)
-    {
+    if (ev->jaxis.axis == 1) {
         rotateY = (float)ev->jaxis.value;
     }
 
-    if (rotateX == 0.0f)
+    if (rotateX == 0.0f) {
         rotateX = lastLeftStickX;
-    else
+    }
+    else {
         lastLeftStickX = rotateX;
+    }
     
-    if (rotateY == 0.0f)
+    if (rotateY == 0.0f) {
         rotateY = lastLeftStickY;
-    else
+    }
+    else {
         lastLeftStickY = rotateY;
+    }
 
-    if (rotateX > JOYSTICK_THRESHOLD)
+    if (rotateX > JOYSTICK_THRESHOLD) {
         moveX = 1;
-    else if (rotateX < -JOYSTICK_THRESHOLD)
+    }
+    else if (rotateX < -JOYSTICK_THRESHOLD) {
         moveX = -1;
-    else
+    }
+    else {
         moveX = 0;
+    }
 
-    if (rotateY > JOYSTICK_THRESHOLD)
+    if (rotateY > JOYSTICK_THRESHOLD) {
         moveY = 1;
-    else if (rotateY < -JOYSTICK_THRESHOLD)
+    }
+    else if (rotateY < -JOYSTICK_THRESHOLD) {
         moveY = -1;
-    else
+    }
+    else {
         moveY = 0;
+    }
 
     player->SetMovement(moveX, moveY);
 }
 
-void spawnEnemy(SDL_Renderer* renderer)
-{
-    // Choose semi-random coordinates for the enemy
-    // --
-    // The enemies can only spawn near the edges of the screen, so we have to do some checks and balances on the generated
-    // x and y coordinates. x can either be 50, (1920 - 50) = 1870, or a random value between those except right under or above the player,
-    // however if x meets 50 < x < 1870 (860 !< x !< 1060), then y must be 100 or (1080 - 100) = 980. We also must evenly distribute x
-    // between the three options or almost all the enemies will be exclusively at the top or bottom of the screen. We'll call this
-    // the "section".
-    //
-    // Sections:
-    //     0 = left
-    //     1 = middle
-    //     2 = right
-    // Ranges:
-    //    50 <= x <= 1870 (860 !< x !< 1060)
-    //   100 <= y <= 980
-
-    int enemyX;
-    int enemyY;
-    int section = rand() % 3;
-    int top     = rand() % 1;
-
-    // Give it a random orientation to make it more visually interesting
-    int orientation = rand() % 360;
-
-    switch (section)
-    {
-    case 0:
-        enemyX = 50;
-        enemyY = rand() % 980 + 100;
-        break;
-    case 1:
-        // Keep generating values until we get one that fits the restriction
-        do
-        {
-            enemyX = rand() % 1870 + 50;
-        } while (enemyX > 860 && enemyX < 1060);
-
-        if (top)
-            enemyY = 100;
-        else
-            enemyY = 980;
-
-        break;
-    case 2:
-        enemyX = 1870;
-        enemyY = rand() % 980 + 100;
-    }
-
-    // Create the enemy and add it to the list
-    Enemy* enemy = new Enemy(renderer, difficultyLevel);
-
-    enemy->SetLocationAndTarget(enemyX, enemyY, playerX, playerY);
-    enemy->SetOrientation(orientation);
-
-    enemies.push_back(enemy);
-}
-
 void checkCollisionUpdates()
 {
-    std::vector<Projectile*>::iterator projectileIt;
-    std::vector<Enemy*>::iterator enemyIt;
-
-    // Check for Enemy -> Player collision
-    for (auto it : enemies)
-    {
-        if (it->CheckHitTarget())
-        {
-            // Game over, no need to further process collisions
+    for (auto it : enemies) {
+        if (it->HasHitTarget()) {
+            gameOver = true;
+            return;
         }
     }
 
-    // Check for Projectile -> Enemy collision
-    for (projectileIt = projectiles.begin(); projectileIt != projectiles.end();)
-    {
-        auto projectile = *projectileIt;
-        auto projectileCoordinates = projectile->GetProjectileLocation();
+    for (auto it : coins) {
+        if (it->HasHitTarget()) {
+            currentScore += 1;
+            it->ResetCoin();
 
-        for (enemyIt = enemies.begin(); enemyIt != enemies.end();)
-        {
-            auto enemy = *enemyIt;
-            auto enemyCoordinates = enemy->GetEnemyLocation();
-
-            // We'll check for a collision within 96 / 2 pixels
-            if (abs(std::get<0>(projectileCoordinates) - std::get<0>(enemyCoordinates)) < (96 / 2) &&
-                abs(std::get<1>(projectileCoordinates) - std::get<1>(enemyCoordinates)) < (96 / 2))
-            {
-                // Increase score
-                currentScore += 10;
-
-                // Scale difficulty to score
-                if (currentScore > 50)
-                {
-                    difficultyLevel = LEVEL_ONE;
-                    difficultyDisplay = DIFFICULTY_LEVEL_ONE;
-                }
-
-                if (currentScore > 100)
-                {
-                    difficultyLevel = LEVEL_TWO;
-                    difficultyDisplay = DIFFICULTY_LEVEL_TWO;
-                }
-
-                if (currentScore > 200)
-                {
-                    difficultyLevel = LEVEL_THREE;
-                    difficultyDisplay = DIFFICULTY_LEVEL_THREE;
-                }
-
-                if (currentScore > 500)
-                {
-                    difficultyLevel = LEVEL_FOUR;
-                    difficultyDisplay = DIFFICULTY_LEVEL_FOUR;
-                }
-
-                if (currentScore > 1000)
-                {
-                    difficultyLevel = LEVEL_FIVE;
-                    difficultyDisplay = DIFFICULTY_LEVEL_FIVE;
-                }
-
-                hud->SetScore(currentScore, difficultyDisplay);
-
-                // Destroy the enemy
-                delete enemy;
-                enemy = nullptr;
-
-                enemyIt = enemies.erase(enemyIt);
-
-                // Delete the projectile
-                delete projectile;
-                projectile = nullptr;
-
-                projectileIt = projectiles.erase(projectileIt);
-
-                // Do not process further because the entities are deleted
-                break;
-            }
-            else
-            {
-                enemyIt++;
-            }
-        }
-
-        // If the projectile was deleted due to collision, continue to the next projectile
-        if (projectile == nullptr)
-            continue;
-
-        // Check for off-screen projectiles
-        if (std::get<0>(projectileCoordinates) == -1 && std::get<1>(projectileCoordinates) == -1)
-        {
-            // Delete the projectile
-            delete projectile;
-            projectile = nullptr;
-
-            projectileIt = projectiles.erase(projectileIt);
-        }
-        else
-        {
-            projectileIt++;
+            hud->SetScore(currentScore);
         }
     }
 }
 
 void render(SDL_Renderer* renderer)
 {
-    // Only render the player, enemies, and projectiles if the game is still going
     if (!gameOver)
     {
-        // Player
         player->Render(renderer);
 
-        // Enemies
         for (auto it : enemies)
             it->Render(renderer);
 
-        // Projectiles
-        for (auto it : projectiles)
+        for (auto it : coins)
             it->Render(renderer);
     }
 
-    // Always render the HUD regardless
     hud->Render(renderer);
 }
 
 void update(SDL_Renderer *renderer, int deltaFrameTicks, int totalFrameCount, int totalTickCount)
 {
-    // Handle input
     SDL_Event ev;
 
     while (SDL_PollEvent(&ev) != 0)
     {
-        // Button press
         if (ev.type == SDL_JOYBUTTONDOWN)
             handleControllerButtonPress(renderer, &ev);
 
-        // Axis motion (left stick, right stick)
         if (ev.type == SDL_JOYAXISMOTION)
             handleControllerAxisChange(&ev);
     }
 
-    // Handle enemy spawning, spawn a new enemy roughly every 800ms (if game is not over)
-    if ((totalTickCount - lastEnemySpawnTick) >= 800 && !gameOver)
-    {
-        spawnEnemy(renderer);
 
-        // Set next timeout
-        lastEnemySpawnTick = totalTickCount;
-    }
-
-    // Run HUD updates
     hud->Update(renderer, deltaFrameTicks, totalFrameCount, gameOver);
 
-    // Run game event updates
     if (!gameOver)
     {
-        player->Update(renderer, deltaFrameTicks, totalFrameCount);
-        // Run enemy updates
+        if ((totalTickCount - lastGameStageChangeTick) >= 10000) {
+            handledNextDifficulty = false;
+            gameStage += 1;
+            lastGameStageChangeTick = totalTickCount;
+        }
+
+        if (gameStage % 2 == 0 && !handledNextDifficulty) {
+            spawnEnemy(renderer);
+            spawnCoin(renderer);
+            handledNextDifficulty = true;
+        }
+        
+        player->Update(renderer, deltaFrameTicks, totalFrameCount, totalTickCount);
+
         for (auto enemy : enemies)
-            enemy->Update(renderer, deltaFrameTicks, totalFrameCount);
+            enemy->Update(renderer, deltaFrameTicks, totalFrameCount, totalTickCount);
 
-        // Run projectile update 
-        for (auto projectile : projectiles)
-            projectile->Update(renderer, deltaFrameTicks, totalFrameCount);
+        for (auto coin : coins)
+            coin->Update(renderer, deltaFrameTicks, totalFrameCount, totalTickCount);
 
-        // Check for collisions
         checkCollisionUpdates();
     }
 }
 
 void initGame(SDL_Renderer* renderer)
 {
-    // Seed RNG
     srand(time(0));
 
-    // Initialize UI
     hud = new HUD();
 
     hud->SetColorInfo(fgColor, bgColor);
-    hud->SetScore(0, DIFFICULTY_LEVEL_ONE);
+    hud->SetScore(0);
 
-    // Initialize the player / ship
     player = new Player(renderer);
-
-    // Get the player location as coordinates and set the trackers
-    auto playerLocation = player->GetPosition();
-    playerX = std::get<0>(playerLocation);
-    playerY = std::get<1>(playerLocation);
+    spawnEnemy(renderer);
+    spawnCoin(renderer);
 }
