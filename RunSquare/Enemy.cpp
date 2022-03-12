@@ -2,24 +2,21 @@
 
 const static float INITIAL_ENEMY_SPEED = 0.075f;
 const static float INCREMENT_ENEMY_SPEED = 0.025f;
+const static float ACTIVATION_CYCLE_IN_MS = 2000.0f;
+const static float SPEED_INCREMENT_CYCLE_IN_MS = 10000.0f;
 
-Enemy::Enemy(SDL_Renderer* renderer)
+Enemy::Enemy(SDL_Renderer* renderer, const SDL_Rect* targetPosition)
+    : targetHit(false), speed(INITIAL_ENEMY_SPEED),
+      active(false), tickTracker(0), targetPosition(targetPosition)
 {
     SDL_Surface* enemySurface = IMG_Load("/app0/assets/images/enemy.tga");
     this->texture = SDL_CreateTextureFromSurface(renderer, enemySurface);
+    
     SDL_SetTextureBlendMode(this->texture, SDL_BLENDMODE_BLEND);
     SDL_SetTextureAlphaMod(this->texture, 128);
 
-    this->position.x = rand() % (1920 - enemySurface->w);
-    this->position.y = rand() % (1080 - enemySurface->h);
-
-    this->targetHit = false;
-
-    this->speed = INITIAL_ENEMY_SPEED;
-    this->active = false;
-
-    this->spawnTick = 0;
-    this->lastSpeedUpdateTick = 0;
+    this->position.x = rand() % (Constants::FRAME_WIDTH - enemySurface->w);
+    this->position.y = rand() % (Constants::FRAME_HEIGHT - enemySurface->h);
 }
 
 Enemy::~Enemy()
@@ -47,13 +44,14 @@ void Enemy::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCo
     }
     
     if (!this->active) {
-        if (this->spawnTick == 0) {
-            this->spawnTick = totalTickCount;
+        if (this->tickTracker == 0) {
+            this->tickTracker = totalTickCount;
         }
 
-        if ((totalTickCount - this->spawnTick) >= 2000) {
+        if ((totalTickCount - this->tickTracker) >= ACTIVATION_CYCLE_IN_MS) {
             SDL_SetTextureAlphaMod(this->texture, 255);
             this->active = true;
+            this->tickTracker = totalTickCount;
         }
         else {
             return;
@@ -65,9 +63,9 @@ void Enemy::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCo
         return;
     }
 
-    if ((totalTickCount - this->lastSpeedUpdateTick) >= 10000) {
+    if ((totalTickCount - this->tickTracker) >= SPEED_INCREMENT_CYCLE_IN_MS) {
         this->speed += INCREMENT_ENEMY_SPEED;
-        this->lastSpeedUpdateTick = totalTickCount;
+        this->tickTracker = totalTickCount;
     }
 
     int targetDeltaX = this->targetPosition->x - this->position.x;
@@ -87,28 +85,8 @@ void Enemy::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCo
     this->position.y += this->speed * movementY * deltaFrameTicks;
 }
 
-bool Enemy::HasHitTarget()
+const bool Enemy::HasHitTarget()
 {
     return this->targetHit;
 
-}
-
-void Enemy::SetTargetPositionPointer(const SDL_Rect* targetPosition)
-{
-    this->targetPosition = targetPosition;
-}
-
-
-std::tuple<int, int> Enemy::GetPosition()
-{
-    int x = 0;
-    int y = 0;
-
-    if (this->texture != nullptr)
-    {
-        x = this->position.x;
-        y = this->position.y;
-    }
-
-    return std::make_tuple(x, y);
 }

@@ -5,6 +5,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
+#include "Constants.h"
+
 class Enemy
 {
 private:
@@ -17,18 +19,13 @@ private:
     float speed;
     bool active;
 
-    int spawnTick;
-    int lastSpeedUpdateTick;
+    int tickTracker;
 public:
-    Enemy(SDL_Renderer* renderer);
+    Enemy(SDL_Renderer* renderer, const SDL_Rect* targetPosition);
     ~Enemy();
 
     void Render(SDL_Renderer* renderer);
     void Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCount, int totalTickCount);
 
-    bool HasHitTarget();
-
-    void SetTargetPositionPointer(const SDL_Rect* targetPosition);
-    
-    std::tuple<int, int> GetPosition();
+    const bool HasHitTarget();
 };
