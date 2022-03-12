@@ -23,3 +23,7 @@ make
 ```
 
 A `.pkg` file will be compiled and can be installed on a PS4.
+
+# The Game
+
+Use the left joystick to control the player, collect as many coins as possible while avoiding the evil orange squares.
