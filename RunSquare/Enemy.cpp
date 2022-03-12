@@ -15,8 +15,8 @@ Enemy::Enemy(SDL_Renderer* renderer, const SDL_Rect* targetPosition)
     SDL_SetTextureBlendMode(this->texture, SDL_BLENDMODE_BLEND);
     SDL_SetTextureAlphaMod(this->texture, 128);
 
-    this->position.x = rand() % (Constants::FRAME_WIDTH - enemySurface->w);
-    this->position.y = rand() % (Constants::FRAME_HEIGHT - enemySurface->h);
+    this->position.x = std::rand() % (Constants::FRAME_WIDTH - enemySurface->w);
+    this->position.y = std::rand() % (Constants::FRAME_HEIGHT - enemySurface->h);
 }
 
 Enemy::~Enemy()
@@ -73,12 +73,12 @@ void Enemy::Update(SDL_Renderer* renderer, int deltaFrameTicks, int totalFrameCo
 
     int movementX = 0;
     if (targetDeltaX != 0) {
-        movementX = targetDeltaX / abs(targetDeltaX);
+        movementX = targetDeltaX / std::abs(targetDeltaX);
     }
     
     int movementY = 0;
     if (targetDeltaY != 0) {
-        movementY = targetDeltaY / abs(targetDeltaY);
+        movementY = targetDeltaY / std::abs(targetDeltaY);
     }
     
     this->position.x += this->speed * movementX * deltaFrameTicks;
